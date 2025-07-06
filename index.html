@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snap Tale Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow">
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-4xl font-extrabold text-white">Snap Tale</h1>
+          <p class="text-lg italic text-pink-200 mt-1">"Every order tells a tale."</p>
+        </div>
+        <button onclick="fetchOrders()" class="bg-white text-pink-600 px-4 py-2 rounded hover:bg-pink-100">
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="mb-6">
+            <button onclick="showCreateOrderForm()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">+ Create Order</button>
+        </div>
+
+        <!-- Pending Orders -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Pending Orders</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded shadow">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left px-4 py-2">Order ID</th>
+                            <th class="text-left px-4 py-2">Name</th>
+                            <th class="text-left px-4 py-2">Phone</th>
+                            <th class="text-left px-4 py-2">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingOrders"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Delivered Orders -->
+        <section>
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Delivered Orders</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded shadow">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left px-4 py-2">Order ID</th>
+                            <th class="text-left px-4 py-2">Name</th>
+                            <th class="text-left px-4 py-2">Phone</th>
+                            <th class="text-left px-4 py-2">Review</th>
+                            <th class="text-left px-4 py-2">Story</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliveredOrders"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Order creation modal -->
+    <div id="createOrderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded shadow-md w-80">
+            <h3 class="text-lg font-semibold mb-4">Create New Order</h3>
+            <input type="text" id="newOrderId" placeholder="Order ID" class="w-full mb-2 p-2 border rounded">
+            <input type="text" id="newCustomerName" placeholder="Customer Name" class="w-full mb-2 p-2 border rounded">
+            <input type="text" id="newPhone" placeholder="Phone Number" class="w-full mb-4 p-2 border rounded">
+            <div class="flex justify-between">
+                <button onclick="createOrder()" class="bg-blue-500 text-white px-4 py-2 rounded">Create</button>
+                <button onclick="hideCreateOrderForm()" class="text-gray-600">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function fetchOrders() {
+        const ordersRes = await fetch('/orders');
+        const logsRes = await fetch('/ugc_logs');
+        const orders = await ordersRes.json();
+        const logs = await logsRes.json();
+
+        const pendingTbody = document.getElementById('pendingOrders');
+        const deliveredTbody = document.getElementById('deliveredOrders');
+        pendingTbody.innerHTML = '';
+        deliveredTbody.innerHTML = '';
+
+        orders.forEach(order => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-2">${order.order_id}</td>
+                <td class="px-4 py-2">${order.customer_name}</td>
+                <td class="px-4 py-2">${order.phone_number}</td>
+                <td class="px-4 py-2">
+                    <button onclick="markAsDelivered('${order.order_id}')" class="bg-indigo-600 text-white px-3 py-1 rounded">Mark as Delivered</button>
+                </td>
+            `;
+            pendingTbody.appendChild(row);
+        });
+
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-2">${log["Order ID"]}</td>
+                <td class="px-4 py-2">${log["Customer Name"]}</td>
+                <td class="px-4 py-2">${log["Phone"]}</td>
+                <td class="px-4 py-2">${log["Raw Review"]}</td>
+                <td class="px-4 py-2">
+                    ${
+                        log["Drive Link"] !== "review awaited" && log["Drive Link"] !== "N/A"
+                        ? `<a href="${log["Drive Link"]}" target="_blank" class="inline-block bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">View</a>`
+                        : `<span class="text-gray-400 italic">Awaiting upload…</span>`
+                    }
+                </td>
+            `;
+            deliveredTbody.appendChild(row);
+        });
+    }
+
+    async function markAsDelivered(orderId) {
+        await fetch(`/mark_delivered?order_id=${orderId}`, { method: 'POST' });
+        fetchOrders();
+    }
+
+    function showCreateOrderForm() {
+        document.getElementById('createOrderModal').classList.remove('hidden');
+    }
+
+    function hideCreateOrderForm() {
+        document.getElementById('createOrderModal').classList.add('hidden');
+    }
+
+    async function createOrder() {
+        const id = document.getElementById('newOrderId').value.trim();
+        const name = document.getElementById('newCustomerName').value.trim();
+        const phone = document.getElementById('newPhone').value.trim();
+        if (!id || !name || !phone) return alert('Fill all fields');
+        await fetch('/create_order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: id, customer_name: name, phone_number: phone })
+        });
+        hideCreateOrderForm();
+        fetchOrders();
+    }
+
+    // Initial fetch
+    fetchOrders();
+
+    // Refresh every 15 seconds
+    setInterval(fetchOrders, 15000);
+</script>
+
+</body>
+</html>
