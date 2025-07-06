@@ -2,8 +2,6 @@
 
 > *Aimed to increase the social media image of Shopify-based brands.*
 
-![Project Banner](https://i.imgur.com/JK8W3r0.png)
-
 ## 📌 Overview
 **Snap Tale** is an automation platform for collecting user-generated content (UGC) tailored for e-commerce brands. It seamlessly integrates with Shopify, WhatsApp, and AI services to collect reviews and turn them into branded social media content.
 
